@@ -1,0 +1,43 @@
+<!-- res/layout/activity_main.xml -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Your wallpaper shows behind; keep background transparent or a subtle gradient -->
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- (Optional) a light search bar that searches app labels -->
+        <EditText
+            android:id="@+id/search"
+            android:hint="Search apps"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="@android:drawable/editbox_background"
+            android:padding="8dp"
+            android:inputType="text" />
+
+        <!-- Favorites row -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/favorites"
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:layout_marginTop="8dp"
+            android:overScrollMode="never" />
+
+        <!-- All apps grid -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/apps"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="8dp"
+            android:overScrollMode="never" />
+
+    </LinearLayout>
+</FrameLayout>
