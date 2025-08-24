@@ -1,43 +1,52 @@
-<!-- res/layout/activity_main.xml -->
+<?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    tools:context=".ui.MainActivity">
 
-    <!-- Your wallpaper shows behind; keep background transparent or a subtle gradient -->
 
     <LinearLayout
-        android:orientation="vertical"
-        android:padding="16dp"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="8dp">
 
-        <!-- (Optional) a light search bar that searches app labels -->
-        <EditText
-            android:id="@+id/search"
-            android:hint="Search apps"
+        <!-- Favorites Row (Material style) -->
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:background="@android:drawable/editbox_background"
-            android:padding="8dp"
-            android:inputType="text" />
+            android:layout_height="88dp"
+            android:layout_margin="8dp"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="8dp"
+            app:strokeColor="?attr/colorOutline"
+            app:strokeWidth="1dp"
+            app:cardBackgroundColor="?attr/colorSurface">
 
-        <!-- Favorites row -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/favorites"
-            android:layout_width="match_parent"
-            android:layout_height="72dp"
-            android:layout_marginTop="8dp"
-            android:overScrollMode="never" />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/favorites"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="8dp"
+                android:clipToPadding="false"
+                android:overScrollMode="never"
+                tools:listitem="@layout/item_app" />
+        </com.google.android.material.card.MaterialCardView>
 
-        <!-- All apps grid -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/apps"
+        <!-- Spacer to push content down -->
+        <View
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:layout_marginTop="8dp"
-            android:overScrollMode="never" />
+            android:layout_weight="1" />
 
     </LinearLayout>
+
+    <!-- Transparent gesture overlay -->
+    <View
+        android:id="@+id/gestureOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent" />
 </FrameLayout>

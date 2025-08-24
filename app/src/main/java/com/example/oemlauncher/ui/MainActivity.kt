@@ -1,31 +1,39 @@
 package com.example.oemlauncher.ui
 
-
-import android.app.role.RoleManager
-import android.content.*
-import android.os.Build
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
+import android.view.GestureDetector
+import android.view.MotionEvent
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.GridLayoutManager
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.oemlauncher.data.AppRepository
+import com.example.oemlauncher.R
 import com.example.oemlauncher.databinding.ActivityMainBinding
-import com.example.oemlauncher.model.Launchable
+import com.example.oemlauncher.features.loadallapps.adapter.AppAdapter
+import com.example.oemlauncher.features.loadallapps.data.Launchable
+import com.example.oemlauncher.features.loadallapps.presentation.AllAppsBottomSheetFragment
+import com.example.oemlauncher.features.loadallapps.presentation.LoadAllAppsViewModel
 import com.example.oemlauncher.pkg.PackageChangeReceiver
+import kotlinx.coroutines.flow.collectLatest
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), GestureDetector.OnGestureListener {
 
     private lateinit var binding: ActivityMainBinding
-    private lateinit var repo: AppRepository
-    private lateinit var allAdapter: AppAdapter
+    private lateinit var viewModel: LoadAllAppsViewModel
     private lateinit var favAdapter: AppAdapter
 
-    private val prefs by lazy { getSharedPreferences("launcher", Context.MODE_PRIVATE) }
+    private lateinit var gestureDetector: GestureDetector
+    private var allAppsSheet: AllAppsBottomSheetFragment? = null
 
-    private var allApps: List<Launchable> = emptyList()
-    private var filteredApps: List<Launchable> = emptyList()
+    private val packageReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            viewModel.loadApps()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,96 +41,87 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Request HOME role if needed (Android 10+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val rm = getSystemService(RoleManager::class.java)
-            if (rm.isRoleAvailable(RoleManager.ROLE_HOME) && !rm.isRoleHeld(RoleManager.ROLE_HOME)) {
-                startActivityForResult(rm.createRequestRoleIntent(RoleManager.ROLE_HOME), 1001)
-            }
+        viewModel = ViewModelProvider(this)[LoadAllAppsViewModel::class.java]
+
+        gestureDetector = GestureDetector(this, this)
+
+        setupUI()
+        observeVM()
+        registerReceiver(packageReceiver, PackageChangeReceiver.intentFilter)
+
+        // Gesture overlay for smooth swipe detection anywhere
+        val gestureOverlay = findViewById<View>(R.id.gestureOverlay)
+        gestureOverlay.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
         }
+    }
 
-        repo = AppRepository(packageManager)
-
-        // Favorites row (horizontal)
+    private fun setupUI() {
         favAdapter = AppAdapter(this, emptyList())
         binding.favorites.apply {
-            layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
+            layoutManager = LinearLayoutManager(
+                this@MainActivity,
+                LinearLayoutManager.HORIZONTAL,
+                false
+            )
             adapter = favAdapter
         }
+    }
 
-        // All apps grid
-        allAdapter = AppAdapter(this, emptyList(), onLongPress = { app, anchor ->
-            showContextMenu(app, anchor)
-        })
-
-        val span = 4 // tweak for tablets
-        binding.apps.apply {
-            layoutManager = GridLayoutManager(this@MainActivity, span)
-            adapter = allAdapter
+    private fun observeVM() {
+        lifecycleScope.launchWhenStarted {
+            viewModel.favorites.collectLatest { favAdapter.submitList(it) }
         }
-
-        // Search filter
-        binding.search.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) { filterApps(s?.toString().orEmpty()) }
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        })
-
-        // Initial load
-        loadApps()
-
-        // Listen for package changes
-        registerReceiver(packageReceiver, PackageChangeReceiver.intentFilter)
     }
 
-    private fun loadApps() {
-        allApps = repo.loadAllApps()
-        filteredApps = allApps
-        allAdapter.submitList(filteredApps)
-        reloadFavorites()
-    }
-
-    private fun filterApps(query: String) {
-        val q = query.trim().lowercase()
-        filteredApps = if (q.isEmpty()) allApps
-        else allApps.filter { it.label.lowercase().contains(q) }
-        allAdapter.submitList(filteredApps)
-    }
-
-    private fun reloadFavorites() {
-        val saved = prefs.getStringSet("favorites", emptySet()) ?: emptySet()
-        val favs = saved.mapNotNull { flat ->
-            val i = flat.indexOf('/')
-            if (i <= 0) null
-            else {
-                val pkg = flat.substring(0, i)
-                val cls = flat.substring(i + 1)
-                allApps.find { it.component.packageName == pkg && it.component.className == cls }
-            }
-        }
-        favAdapter.submitList(favs)
-    }
-
-    private fun showContextMenu(app: Launchable, anchor: android.view.View) {
-        val popup = android.widget.PopupMenu(this, anchor)
-        val flat = "${app.component.packageName}/${app.component.className}"
-        val saved = prefs.getStringSet("favorites", emptySet())!!.toMutableSet()
-        val isFav = saved.contains(flat)
+    private fun showContextMenu(app: Launchable, anchor: View) {
+        val popup = androidx.appcompat.widget.PopupMenu(this, anchor)
+        val isFav = viewModel.favorites.value.contains(app)
         popup.menu.add(if (isFav) "Remove from favorites" else "Add to favorites")
         popup.setOnMenuItemClickListener {
-            if (isFav) saved.remove(flat) else saved.add(flat)
-            prefs.edit().putStringSet("favorites", saved).apply()
-            reloadFavorites()
+            viewModel.toggleFavorite(app)
             true
         }
         popup.show()
     }
 
-    private val packageReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            // Light debounce could be added; for MVP just reload
-            loadApps()
+    // --- Gesture callbacks ---
+    override fun onDown(e: MotionEvent): Boolean = true
+    override fun onShowPress(e: MotionEvent) {}
+    override fun onSingleTapUp(e: MotionEvent): Boolean = false
+    override fun onScroll(
+        e1: MotionEvent?,
+        e2: MotionEvent,
+        distanceX: Float,
+        distanceY: Float
+    ): Boolean = false // not needed anymore
+    override fun onLongPress(e: MotionEvent) {}
+
+    override fun onFling(
+        e1: MotionEvent?,
+        e2: MotionEvent,
+        velocityX: Float,
+        velocityY: Float
+    ): Boolean {
+        if (e1 == null || e2 == null) return false
+        val deltaY = e2.y - e1.y
+
+        // Swipe up → show all apps
+        if (deltaY < -150 && velocityY < 0) {
+            if (allAppsSheet == null || allAppsSheet?.isVisible == false) {
+                allAppsSheet = AllAppsBottomSheetFragment()
+                allAppsSheet?.show(supportFragmentManager, "all_apps")
+            }
+            return true
         }
+
+        // Swipe down → close all apps
+        if (deltaY > 150 && velocityY > 0) {
+            allAppsSheet?.dismiss()
+            return true
+        }
+
+        return false
     }
 
     override fun onDestroy() {
