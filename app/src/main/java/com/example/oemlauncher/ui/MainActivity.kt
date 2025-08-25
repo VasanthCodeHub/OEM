@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.collectLatest
 
 class MainActivity : AppCompatActivity(), GestureDetector.OnGestureListener {
 
+
     private lateinit var binding: ActivityMainBinding
     private lateinit var viewModel: LoadAllAppsViewModel
     private lateinit var favAdapter: AppAdapter
@@ -37,22 +39,24 @@ class MainActivity : AppCompatActivity(), GestureDetector.OnGestureListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        try {
+            binding = ActivityMainBinding.inflate(layoutInflater)
+            setContentView(binding.root)
 
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+            viewModel = ViewModelProvider(this)[LoadAllAppsViewModel::class.java]
+            gestureDetector = GestureDetector(this, this)
 
-        viewModel = ViewModelProvider(this)[LoadAllAppsViewModel::class.java]
+            setupUI()
+            observeVM()
+            registerReceiver(packageReceiver, PackageChangeReceiver.intentFilter)
 
-        gestureDetector = GestureDetector(this, this)
-
-        setupUI()
-        observeVM()
-        registerReceiver(packageReceiver, PackageChangeReceiver.intentFilter)
-
-        // Gesture overlay for smooth swipe detection anywhere
-        val gestureOverlay = findViewById<View>(R.id.gestureOverlay)
-        gestureOverlay.setOnTouchListener { _, event ->
-            gestureDetector.onTouchEvent(event)
+            // Gesture overlay for smooth swipe detection anywhere
+            val gestureOverlay = findViewById<View>(R.id.gestureOverlay)
+            gestureOverlay.setOnTouchListener { _, event ->
+                gestureDetector.onTouchEvent(event)
+            }
+        } catch (e: Exception) {
+            throw e
         }
     }
 
@@ -72,17 +76,6 @@ class MainActivity : AppCompatActivity(), GestureDetector.OnGestureListener {
         lifecycleScope.launchWhenStarted {
             viewModel.favorites.collectLatest { favAdapter.submitList(it) }
         }
-    }
-
-    private fun showContextMenu(app: Launchable, anchor: View) {
-        val popup = androidx.appcompat.widget.PopupMenu(this, anchor)
-        val isFav = viewModel.favorites.value.contains(app)
-        popup.menu.add(if (isFav) "Remove from favorites" else "Add to favorites")
-        popup.setOnMenuItemClickListener {
-            viewModel.toggleFavorite(app)
-            true
-        }
-        popup.show()
     }
 
     // --- Gesture callbacks ---

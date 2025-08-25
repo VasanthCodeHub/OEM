@@ -1,23 +1,34 @@
 package com.example.oemlauncher.features.loadallapps.presentation
 
 import android.app.Dialog
+import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupWindow
+import android.widget.Toast
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
+import com.example.oemlauncher.R
 import com.example.oemlauncher.databinding.FragmentAllAppsBinding
 import com.example.oemlauncher.features.loadallapps.adapter.AppAdapter
 import com.example.oemlauncher.features.loadallapps.data.Launchable
+import com.example.oemlauncher.features.loadallapps.helper.ContextMenuHelper
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -57,7 +68,7 @@ class AllAppsBottomSheetFragment : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         allAdapter = AppAdapter(requireContext(), emptyList(), onLongPress = { app, anchor ->
-            showContextMenu(app, anchor)
+            ContextMenuHelper.showContextMenu(anchor, app, viewModel)
         })
 
         binding.apps.apply {
@@ -84,16 +95,7 @@ class AllAppsBottomSheetFragment : BottomSheetDialogFragment() {
         }
     }
 
-    private fun showContextMenu(app: Launchable, anchor: View) {
-        val popup = androidx.appcompat.widget.PopupMenu(requireContext(), anchor)
-        val isFav = viewModel.favorites.value.contains(app)
-        popup.menu.add(if (isFav) "Remove from favorites" else "Add to favorites")
-        popup.setOnMenuItemClickListener {
-            viewModel.toggleFavorite(app)
-            true
-        }
-        popup.show()
-    }
+
 
     override fun onDestroyView() {
         super.onDestroyView()

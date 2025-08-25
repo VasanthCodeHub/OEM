@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base theme for auto DayNight switching -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Surfaces -->
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="android:textColorPrimary">@color/colorOnSurface</item>
+    </style>
+
+</resources>

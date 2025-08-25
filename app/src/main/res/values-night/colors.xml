@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Backgrounds -->
-    <color name="colorSurface">#FFFFFF</color>
-    <color name="colorOnSurface">#000000</color>
+    <color name="colorSurface">#121212</color>
+    <color name="colorOnSurface">#FFFFFF</color>
     <color name="scrollbar_color">#FF6200EE</color>
 
-    <!-- Popup colors -->
+    <!-- Popup colors (dark mode uses white for contrast) -->
     <color name="popup_text_color">@color/colorOnSurface</color>
     <color name="popup_icon_color">@color/colorOnSurface</color>
 </resources>
